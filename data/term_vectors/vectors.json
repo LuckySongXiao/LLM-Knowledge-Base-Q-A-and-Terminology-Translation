@@ -1,0 +1,10 @@
+{
+  "collections": {
+    "term_default": {
+      "vectors": [],
+      "texts": [],
+      "metadata": []
+    }
+  },
+  "default_collection": "term_default"
+}

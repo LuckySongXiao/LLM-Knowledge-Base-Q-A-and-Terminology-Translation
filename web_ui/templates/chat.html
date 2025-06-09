@@ -1,0 +1,702 @@
+{% extends "base.html" %}
+
+{% block title %}松瓷机电AI助手 - 智能对话{% endblock %}
+
+{% block content %}
+<div class="row h-100">
+    <div class="col-12">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>智能对话
+                    </h5>
+                    <div class="d-flex align-items-center">
+                        <!-- 模型选择 -->
+                        <div class="me-3">
+                            <select class="form-select form-select-sm text-white bg-primary border-light"
+                                    id="model-selector"
+                                    style="min-width: 150px;">
+                                <option value="local_default">加载中...</option>
+                            </select>
+                        </div>
+
+                        <!-- 知识库问答开关 -->
+                        <div class="form-check form-switch me-3">
+                            <input class="form-check-input" type="checkbox" id="knowledge-qa-switch" checked>
+                            <label class="form-check-label text-white" for="knowledge-qa-switch">
+                                <i class="fas fa-brain me-1"></i>知识库问答
+                            </label>
+                        </div>
+
+                        <button class="btn btn-outline-light btn-sm me-2" onclick="clearChat()">
+                            <i class="fas fa-trash me-1"></i>清空对话
+                        </button>
+                        <button class="btn btn-outline-light btn-sm me-2" onclick="exportChat()">
+                            <i class="fas fa-download me-1"></i>导出对话
+                        </button>
+                        <div class="status-indicator" id="chat-status">
+                            <i class="fas fa-circle text-success me-1"></i>
+                            <span>松瓷机电AI助手在线</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body p-0 d-flex flex-column chat-container">
+                <!-- 聊天消息区域 -->
+                <div class="chat-messages flex-grow-1" id="chat-messages">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-robot fa-3x mb-3"></i>
+                        <p>您好！我是松瓷机电AI助手，有什么可以帮助您的吗？</p>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="border-top p-3">
+                    <div class="row g-2">
+                        <div class="col">
+                            <div class="input-group">
+                                <textarea
+                                    class="form-control"
+                                    id="message-input"
+                                    placeholder="请输入您的问题..."
+                                    rows="1"
+                                    style="resize: none;"
+                                ></textarea>
+                                <button class="btn btn-primary" type="button" id="send-button" onclick="sendMessage()">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 快捷操作 -->
+                    <div class="mt-2">
+                        <div class="d-flex flex-wrap gap-1">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="insertQuickMessage('你好')">
+                                你好
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="insertQuickMessage('请帮我解释一下')">
+                                请帮我解释
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="insertQuickMessage('请总结一下')">
+                                请总结
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="insertQuickMessage('请翻译成英文')">
+                                翻译成英文
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="insertQuickMessage('请写一段代码')">
+                                写代码
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导出对话模态框 -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-download me-2"></i>导出对话
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">导出格式</label>
+                    <select class="form-select" id="export-format">
+                        <option value="txt">文本文件 (.txt)</option>
+                        <option value="json">JSON文件 (.json)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">文件名</label>
+                    <input type="text" class="form-control" id="export-filename" value="chat_history">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="performExport()">
+                    <i class="fas fa-download me-1"></i>导出
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- 引入marked.js用于Markdown渲染 -->
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<!-- 引入highlight.js用于代码高亮 -->
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+
+<script>
+let chatHistory = [];
+let isWaitingForResponse = false;
+let knowledgeQAEnabled = true;  // 知识库问答开关状态
+let selectedModel = 'local_default';  // 当前选择的模型
+let availableModels = [];  // 可用模型列表
+
+// 配置marked.js
+marked.setOptions({
+    highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                return hljs.highlight(code, { language: lang }).value;
+            } catch (err) {}
+        }
+        return hljs.highlightAuto(code).value;
+    },
+    breaks: true,
+    gfm: true
+});
+
+// 加载可用模型列表
+function loadAvailableModels() {
+    api.get('/chat/models')
+        .then(data => {
+            if (data.success && data.models) {
+                availableModels = data.models;
+                updateModelSelector();
+                console.log('已加载模型列表:', availableModels);
+            }
+        })
+        .catch(error => {
+            console.error('加载模型列表失败:', error);
+            showToast('加载模型列表失败: ' + error.message, 'warning');
+        });
+}
+
+// 更新模型选择器
+function updateModelSelector() {
+    const modelSelector = document.getElementById('model-selector');
+    modelSelector.innerHTML = '';
+
+    availableModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = `${model.name} (${getModelTypeLabel(model.type)})`;
+
+        // 添加状态标识
+        if (model.status === 'active') {
+            option.textContent += ' ✓';
+        }
+
+        modelSelector.appendChild(option);
+    });
+
+    // 设置默认选择
+    if (availableModels.length > 0) {
+        selectedModel = availableModels[0].id;
+        modelSelector.value = selectedModel;
+    }
+}
+
+// 获取模型类型标签
+function getModelTypeLabel(type) {
+    switch(type) {
+        case 'local': return '本地';
+        case 'ollama': return 'Ollama';
+        case 'openai': return 'OpenAI';
+        default: return '未知';
+    }
+}
+
+// 页面初始化
+function initializePage() {
+    console.log('初始化聊天页面');
+
+    // 设置输入框事件
+    const messageInput = document.getElementById('message-input');
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // 自动调整输入框高度
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    // 设置模型选择器事件
+    const modelSelector = document.getElementById('model-selector');
+    modelSelector.addEventListener('change', function() {
+        selectedModel = this.value;
+        console.log('选择模型:', selectedModel);
+        updateModelStatus();
+        updateKnowledgeAvailability();
+    });
+
+    // 设置知识库问答开关事件
+    const knowledgeSwitch = document.getElementById('knowledge-qa-switch');
+    knowledgeSwitch.addEventListener('change', function() {
+        knowledgeQAEnabled = this.checked;
+        updateChatPlaceholder();
+        updateKnowledgeAvailability();
+        console.log('知识库问答模式:', knowledgeQAEnabled ? '开启' : '关闭');
+    });
+
+    // 加入聊天房间
+    if (socket) {
+        socket.emit('join_chat', { room_id: 'default' });
+
+        // 监听聊天消息
+        socket.on('chat_message', function(data) {
+            addMessageToChat(data);
+        });
+
+        // 监听思考状态移除
+        socket.on('remove_thinking', function(data) {
+            removeThinkingMessage(data.thinking_id);
+        });
+    }
+
+    // 加载可用模型列表
+    loadAvailableModels();
+
+    // 加载历史对话
+    loadChatHistory();
+
+    // 初始化聊天占位符
+    updateChatPlaceholder();
+}
+
+// 更新模型状态显示
+function updateModelStatus() {
+    const selectedModelInfo = availableModels.find(m => m.id === selectedModel);
+    if (selectedModelInfo) {
+        console.log('当前模型:', selectedModelInfo.name, '类型:', selectedModelInfo.type);
+    }
+}
+
+// 更新知识库功能可用性
+function updateKnowledgeAvailability() {
+    const knowledgeSwitch = document.getElementById('knowledge-qa-switch');
+    const selectedModelInfo = availableModels.find(m => m.id === selectedModel);
+
+    // 所有模型都支持知识库问答
+    if (selectedModelInfo) {
+        knowledgeSwitch.disabled = false;
+        console.log(`模型 ${selectedModelInfo.name} (${selectedModelInfo.type}) 支持知识库问答`);
+    } else {
+        // 如果找不到模型信息，默认启用知识库问答
+        knowledgeSwitch.disabled = false;
+        console.log('未找到模型信息，默认启用知识库问答');
+    }
+}
+
+// 更新聊天输入框占位符
+function updateChatPlaceholder() {
+    const messageInput = document.getElementById('message-input');
+    if (knowledgeQAEnabled) {
+        messageInput.placeholder = '请输入您的问题（支持知识库问答）...';
+    } else {
+        messageInput.placeholder = '请输入您的问题（普通对话模式）...';
+    }
+}
+
+// 发送消息
+function sendMessage() {
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+
+    if (!message || isWaitingForResponse) {
+        return;
+    }
+
+    if (!socket || !socket.connected) {
+        showToast('连接已断开，请刷新页面重试', 'danger');
+        return;
+    }
+
+    // 清空输入框
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+
+    // 设置等待状态
+    isWaitingForResponse = true;
+    updateSendButton(false);
+
+    // 通过Socket.IO发送消息
+    socket.emit('chat_message', {
+        message: message,
+        room_id: 'default',
+        knowledge_qa_enabled: knowledgeQAEnabled,  // 传递知识库问答开关状态
+        selected_model: selectedModel  // 传递选择的模型
+    });
+}
+
+// 添加消息到聊天界面
+function addMessageToChat(messageData) {
+    const messagesContainer = document.getElementById('chat-messages');
+
+    // 如果是第一条消息，清除欢迎信息
+    const welcomeMessage = messagesContainer.querySelector('.text-center.text-muted');
+    if (welcomeMessage) {
+        welcomeMessage.remove();
+    }
+
+    // 创建消息元素
+    const messageElement = createMessageElement(messageData);
+    messagesContainer.appendChild(messageElement);
+
+    // 滚动到底部
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // 添加到历史记录
+    chatHistory.push(messageData);
+
+    // 如果是AI回复，重置等待状态
+    if (messageData.role === 'assistant' && messageData.type === 'response') {
+        isWaitingForResponse = false;
+        updateSendButton(true);
+    }
+}
+
+// 创建消息元素
+function createMessageElement(messageData) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${messageData.role}`;
+    messageDiv.id = `message-${messageData.id}`;
+
+    let content = '';
+
+    if (messageData.type === 'thinking') {
+        content = `
+            <div class="message-content">
+                <div class="thinking-indicator">
+                    ${messageData.content}
+                    <div class="thinking-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        // 根据消息角色决定是否使用markdown渲染
+        let messageContent;
+        if (messageData.role === 'assistant') {
+            // AI回复使用markdown渲染
+            try {
+                messageContent = marked.parse(messageData.content);
+                // 处理思维链
+                messageContent = processThinkingChain(messageContent);
+            } catch (error) {
+                console.warn('Markdown解析失败，使用原始文本:', error);
+                messageContent = escapeHtml(messageData.content);
+            }
+        } else {
+            // 用户消息使用普通文本
+            messageContent = escapeHtml(messageData.content);
+        }
+
+        // 构建标签信息
+        let badges = '';
+        if (messageData.knowledge_qa_used) {
+            badges += '<div class="knowledge-badge"><i class="fas fa-brain"></i> 知识库问答</div>';
+        }
+        if (messageData.model_used && messageData.role === 'assistant') {
+            const modelInfo = availableModels.find(m => m.id === messageData.model_used);
+            const modelName = modelInfo ? modelInfo.name : messageData.model_used;
+            const modelType = modelInfo ? getModelTypeLabel(modelInfo.type) : '';
+            badges += `<div class="model-badge"><i class="fas fa-robot"></i> ${modelName} (${modelType})</div>`;
+        }
+
+        content = `
+            <div class="message-content" style="position: relative;">
+                <div class="message-text">${messageContent}</div>
+                <div class="message-time">
+                    ${utils.formatTime(messageData.timestamp)}
+                </div>
+                ${badges}
+                ${messageData.role === 'assistant' ? '<button class="copy-button" onclick="copyCleanContent(this)"><i class="fas fa-copy"></i> 复制</button>' : ''}
+            </div>
+        `;
+    }
+
+    messageDiv.innerHTML = content;
+    messageDiv.classList.add('fade-in');
+
+    return messageDiv;
+}
+
+// 移除思考消息
+function removeThinkingMessage(thinkingId) {
+    const thinkingElement = document.getElementById(`message-${thinkingId}`);
+    if (thinkingElement) {
+        thinkingElement.remove();
+    }
+}
+
+// 更新发送按钮状态
+function updateSendButton(enabled) {
+    const sendButton = document.getElementById('send-button');
+    const messageInput = document.getElementById('message-input');
+
+    if (enabled) {
+        sendButton.disabled = false;
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        messageInput.disabled = false;
+        messageInput.placeholder = '请输入您的问题...';
+    } else {
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        messageInput.disabled = true;
+        messageInput.placeholder = 'AI正在思考中...';
+    }
+}
+
+// 插入快捷消息
+function insertQuickMessage(text) {
+    const messageInput = document.getElementById('message-input');
+    messageInput.value = text;
+    messageInput.focus();
+}
+
+// 清空对话
+function clearChat() {
+    if (!confirm('确定要清空所有对话记录吗？')) {
+        return;
+    }
+
+    // 清空界面
+    const messagesContainer = document.getElementById('chat-messages');
+    messagesContainer.innerHTML = `
+        <div class="text-center text-muted py-4">
+            <i class="fas fa-robot fa-3x mb-3"></i>
+            <p>您好！我是松瓷机电AI助手，有什么可以帮助您的吗？</p>
+        </div>
+    `;
+
+    // 清空历史记录
+    chatHistory = [];
+
+    // 调用API清空服务器端历史
+    api.delete('/chat/clear')
+        .then(data => {
+            if (data.success) {
+                showToast('对话记录已清空', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('清空对话失败:', error);
+            showToast('清空对话失败: ' + error.message, 'danger');
+        });
+}
+
+// 导出对话
+function exportChat() {
+    if (chatHistory.length === 0) {
+        showToast('没有对话记录可以导出', 'warning');
+        return;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+}
+
+// 执行导出
+function performExport() {
+    const format = document.getElementById('export-format').value;
+    const filename = document.getElementById('export-filename').value || 'chat_history';
+
+    const url = `/api/chat/export?format=${format}`;
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('导出失败');
+            }
+
+            if (format === 'txt') {
+                return response.text();
+            } else {
+                return response.json();
+            }
+        })
+        .then(data => {
+            let content, contentType, fileExtension;
+
+            if (format === 'txt') {
+                content = data;
+                contentType = 'text/plain';
+                fileExtension = '.txt';
+            } else {
+                content = JSON.stringify(data, null, 2);
+                contentType = 'application/json';
+                fileExtension = '.json';
+            }
+
+            utils.downloadFile(content, filename + fileExtension, contentType);
+            showToast('对话记录导出成功', 'success');
+
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+            modal.hide();
+        })
+        .catch(error => {
+            console.error('导出失败:', error);
+            showToast('导出失败: ' + error.message, 'danger');
+        });
+}
+
+// 加载历史对话
+function loadChatHistory() {
+    api.get('/chat/history?per_page=50')
+        .then(data => {
+            if (data.success && data.history.length > 0) {
+                const messagesContainer = document.getElementById('chat-messages');
+
+                // 清除欢迎信息
+                const welcomeMessage = messagesContainer.querySelector('.text-center.text-muted');
+                if (welcomeMessage) {
+                    welcomeMessage.remove();
+                }
+
+                // 添加历史消息
+                data.history.forEach(message => {
+                    const messageElement = createMessageElement(message);
+                    messagesContainer.appendChild(messageElement);
+                });
+
+                // 滚动到底部
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                chatHistory = data.history;
+            }
+        })
+        .catch(error => {
+            console.error('加载历史对话失败:', error);
+        });
+}
+
+// HTML转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 处理思维链内容
+function processThinkingChain(content) {
+    // 如果内容中包含思维链容器，直接返回（已经处理过）
+    if (content.includes('thinking-chain-container')) {
+        return content;
+    }
+
+    // 这里不需要额外处理，因为后端已经处理了思维链
+    return content;
+}
+
+// 切换思维链显示/隐藏
+function toggleThinking(thinkingId) {
+    const toggle = document.querySelector(`[onclick="toggleThinking(${thinkingId})"]`);
+    const content = document.getElementById(`thinking-${thinkingId}`);
+
+    if (!toggle || !content) return;
+
+    const isExpanded = content.classList.contains('expanded');
+
+    if (isExpanded) {
+        // 折叠
+        content.classList.remove('expanded');
+        content.classList.add('collapsed');
+        toggle.classList.remove('expanded');
+    } else {
+        // 展开
+        content.classList.remove('collapsed');
+        content.classList.add('expanded');
+        toggle.classList.add('expanded');
+    }
+}
+
+// 复制纯净内容（不包含思维链）
+function copyCleanContent(button) {
+    const messageContent = button.closest('.message-content');
+    const messageText = messageContent.querySelector('.message-text');
+
+    if (!messageText) return;
+
+    // 克隆内容以避免修改原始DOM
+    const clonedContent = messageText.cloneNode(true);
+
+    // 移除所有思维链容器
+    const thinkingContainers = clonedContent.querySelectorAll('.thinking-chain-container');
+    thinkingContainers.forEach(container => container.remove());
+
+    // 获取纯净的文本内容
+    let cleanText = clonedContent.textContent || clonedContent.innerText || '';
+
+    // 清理多余的空白字符
+    cleanText = cleanText.replace(/\n\s*\n/g, '\n').trim();
+
+    // 复制到剪贴板
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(cleanText).then(() => {
+            showCopySuccess(button);
+        }).catch(err => {
+            console.error('复制失败:', err);
+            fallbackCopyTextToClipboard(cleanText, button);
+        });
+    } else {
+        fallbackCopyTextToClipboard(cleanText, button);
+    }
+}
+
+// 备用复制方法
+function fallbackCopyTextToClipboard(text, button) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        document.execCommand('copy');
+        showCopySuccess(button);
+    } catch (err) {
+        console.error('备用复制方法失败:', err);
+        showToast('复制失败，请手动选择文本复制', 'danger');
+    }
+
+    document.body.removeChild(textArea);
+}
+
+// 显示复制成功状态
+function showCopySuccess(button) {
+    const originalContent = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+    button.classList.add('copied');
+
+    setTimeout(() => {
+        button.innerHTML = originalContent;
+        button.classList.remove('copied');
+    }, 2000);
+
+    showToast('内容已复制到剪贴板', 'success');
+}
+
+// 页面卸载时离开聊天房间
+window.addEventListener('beforeunload', function() {
+    if (socket && socket.connected) {
+        socket.emit('leave_chat', { room_id: 'default' });
+    }
+});
+</script>
+{% endblock %}

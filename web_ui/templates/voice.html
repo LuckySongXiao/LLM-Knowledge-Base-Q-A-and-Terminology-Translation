@@ -1,0 +1,603 @@
+{% extends "base.html" %}
+
+{% block title %}松瓷机电AI助手 - 语音功能{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 文本转语音 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-volume-up me-2"></i>文本转语音 (TTS)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">输入文本</label>
+                    <textarea class="form-control" id="tts-text" rows="4" 
+                              placeholder="请输入要转换为语音的文本..."></textarea>
+                    <small class="text-muted">字符数: <span id="tts-char-count">0</span></small>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">语音</label>
+                        <select class="form-select" id="voice-select">
+                            <option value="default">默认语音</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">语速</label>
+                        <input type="range" class="form-range" id="speech-speed" min="0.5" max="2" step="0.1" value="1">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">慢</small>
+                            <span id="speed-value" class="badge bg-primary">1.0</span>
+                            <small class="text-muted">快</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="voice-controls">
+                    <button class="btn btn-warning voice-button" onclick="generateSpeech()" id="tts-button">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary voice-button" onclick="stopSpeech()" id="stop-button" disabled>
+                        <i class="fas fa-stop"></i>
+                    </button>
+                </div>
+                
+                <!-- 音频播放器 -->
+                <div id="audio-player" class="mt-3 d-none">
+                    <audio controls class="w-100" id="generated-audio">
+                        您的浏览器不支持音频播放。
+                    </audio>
+                    <div class="mt-2 text-center">
+                        <button class="btn btn-outline-primary btn-sm" onclick="downloadAudio()">
+                            <i class="fas fa-download me-1"></i>下载音频
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 语音转文本 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-microphone me-2"></i>语音转文本 (STT)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="voice-controls mb-3">
+                    <button class="btn btn-danger voice-button" onclick="toggleRecording()" id="record-button">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary voice-button" onclick="uploadAudio()" id="upload-button">
+                        <i class="fas fa-upload"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <div id="recording-status" class="text-center text-muted">
+                        <i class="fas fa-microphone-slash fa-2x mb-2"></i>
+                        <p>点击麦克风按钮开始录音</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">识别结果</label>
+                    <textarea class="form-control" id="stt-result" rows="4" 
+                              placeholder="语音识别结果将显示在这里..." readonly></textarea>
+                </div>
+                
+                <div class="text-center">
+                    <button class="btn btn-outline-primary btn-sm me-2" onclick="copySTTResult()">
+                        <i class="fas fa-copy me-1"></i>复制结果
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="sendToChat()">
+                        <i class="fas fa-comments me-1"></i>发送到聊天
+                    </button>
+                </div>
+                
+                <!-- 文件上传 -->
+                <input type="file" id="audio-file-input" class="d-none" accept="audio/*">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 语音训练 -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-graduate me-2"></i>自定义语音训练
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label">语音名称</label>
+                            <input type="text" class="form-control" id="voice-name" placeholder="输入自定义语音的名称">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">训练文本</label>
+                            <textarea class="form-control" id="training-text" rows="3" 
+                                      placeholder="输入与录音对应的文本内容..."></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">训练音频</label>
+                            <div class="file-upload-area" onclick="document.getElementById('training-audio-input').click()">
+                                <i class="fas fa-microphone fa-2x text-muted mb-2"></i>
+                                <p>点击上传训练音频文件</p>
+                                <small class="text-muted">支持 .wav, .mp3, .flac 格式</small>
+                            </div>
+                            <input type="file" id="training-audio-input" class="d-none" accept=".wav,.mp3,.flac">
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">训练说明</h6>
+                                <ul class="small mb-0">
+                                    <li>录音时长建议5-30秒</li>
+                                    <li>音质清晰，无背景噪音</li>
+                                    <li>文本与录音内容完全一致</li>
+                                    <li>可以上传多个样本提高质量</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-secondary w-100 mt-3" onclick="startVoiceTraining()">
+                            <i class="fas fa-play me-1"></i>开始训练
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 训练进度 -->
+                <div id="training-progress" class="mt-3 d-none">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block">训练中，预计需要30-60分钟...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isRecording = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let currentAudioBlob = null;
+
+// 页面初始化
+function initializePage() {
+    console.log('初始化语音页面');
+    
+    // 设置字符计数
+    const ttsText = document.getElementById('tts-text');
+    ttsText.addEventListener('input', updateTTSCharCount);
+    
+    // 设置语速滑块
+    const speedSlider = document.getElementById('speech-speed');
+    speedSlider.addEventListener('input', function() {
+        document.getElementById('speed-value').textContent = this.value;
+    });
+    
+    // 设置文件上传
+    document.getElementById('audio-file-input').addEventListener('change', handleAudioUpload);
+    document.getElementById('training-audio-input').addEventListener('change', handleTrainingAudioUpload);
+    
+    // 加载可用语音
+    loadAvailableVoices();
+    
+    // 检查浏览器支持
+    checkBrowserSupport();
+}
+
+// 更新TTS字符计数
+function updateTTSCharCount() {
+    const text = document.getElementById('tts-text').value;
+    document.getElementById('tts-char-count').textContent = text.length;
+}
+
+// 检查浏览器支持
+function checkBrowserSupport() {
+    // 检查语音合成支持
+    if (!('speechSynthesis' in window)) {
+        showToast('您的浏览器不支持语音合成功能', 'warning');
+    }
+    
+    // 检查媒体录制支持
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('您的浏览器不支持录音功能', 'warning');
+        document.getElementById('record-button').disabled = true;
+    }
+}
+
+// 加载可用语音
+function loadAvailableVoices() {
+    api.get('/voice/voices')
+        .then(data => {
+            if (data.success) {
+                populateVoiceSelect(data.voices);
+            }
+        })
+        .catch(error => {
+            console.error('加载语音列表失败:', error);
+        });
+}
+
+// 填充语音选择器
+function populateVoiceSelect(voices) {
+    const select = document.getElementById('voice-select');
+    select.innerHTML = '';
+    
+    voices.forEach(voice => {
+        const option = document.createElement('option');
+        option.value = voice.id;
+        option.textContent = `${voice.name} (${voice.language})`;
+        select.appendChild(option);
+    });
+}
+
+// 生成语音
+function generateSpeech() {
+    const text = document.getElementById('tts-text').value.trim();
+    if (!text) {
+        showToast('请输入要转换的文本', 'warning');
+        return;
+    }
+    
+    const voice = document.getElementById('voice-select').value;
+    const speed = parseFloat(document.getElementById('speech-speed').value);
+    
+    const button = document.getElementById('tts-button');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    api.post('/voice/tts', {
+        text: text,
+        voice: voice,
+        speed: speed
+    })
+    .then(data => {
+        if (data.success) {
+            playGeneratedAudio(data.audio_data);
+            showToast('语音生成成功', 'success');
+        } else {
+            throw new Error(data.error || '语音生成失败');
+        }
+    })
+    .catch(error => {
+        console.error('语音生成失败:', error);
+        showToast('语音生成失败: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-play"></i>';
+    });
+}
+
+// 播放生成的音频
+function playGeneratedAudio(audioData) {
+    const audioPlayer = document.getElementById('audio-player');
+    const audio = document.getElementById('generated-audio');
+    
+    // 将base64转换为blob URL
+    const audioBlob = base64ToBlob(audioData, 'audio/wav');
+    const audioUrl = URL.createObjectURL(audioBlob);
+    
+    audio.src = audioUrl;
+    audioPlayer.classList.remove('d-none');
+    
+    // 保存当前音频blob用于下载
+    currentAudioBlob = audioBlob;
+    
+    // 启用停止按钮
+    document.getElementById('stop-button').disabled = false;
+}
+
+// 停止语音
+function stopSpeech() {
+    const audio = document.getElementById('generated-audio');
+    audio.pause();
+    audio.currentTime = 0;
+    
+    // 停止浏览器语音合成
+    if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+    }
+    
+    document.getElementById('stop-button').disabled = true;
+}
+
+// 下载音频
+function downloadAudio() {
+    if (!currentAudioBlob) {
+        showToast('没有可下载的音频', 'warning');
+        return;
+    }
+    
+    const url = URL.createObjectURL(currentAudioBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `tts_audio_${Date.now()}.wav`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// 切换录音状态
+function toggleRecording() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+// 开始录音
+function startRecording() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                processRecordedAudio(audioBlob);
+                
+                // 停止所有音轨
+                stream.getTracks().forEach(track => track.stop());
+            };
+            
+            mediaRecorder.start();
+            isRecording = true;
+            
+            // 更新UI
+            const button = document.getElementById('record-button');
+            button.classList.add('recording');
+            button.innerHTML = '<i class="fas fa-stop"></i>';
+            
+            document.getElementById('recording-status').innerHTML = `
+                <i class="fas fa-microphone text-danger fa-2x mb-2"></i>
+                <p class="text-danger">正在录音...</p>
+            `;
+            
+            showToast('开始录音', 'info');
+        })
+        .catch(error => {
+            console.error('录音失败:', error);
+            showToast('录音失败: ' + error.message, 'danger');
+        });
+}
+
+// 停止录音
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        
+        // 更新UI
+        const button = document.getElementById('record-button');
+        button.classList.remove('recording');
+        button.innerHTML = '<i class="fas fa-microphone"></i>';
+        
+        document.getElementById('recording-status').innerHTML = `
+            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+            <p>正在处理录音...</p>
+        `;
+    }
+}
+
+// 处理录制的音频
+function processRecordedAudio(audioBlob) {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.wav');
+    
+    fetch('/api/voice/stt', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('stt-result').value = data.text;
+            showToast('语音识别成功', 'success');
+        } else {
+            throw new Error(data.error || '语音识别失败');
+        }
+    })
+    .catch(error => {
+        console.error('语音识别失败:', error);
+        showToast('语音识别失败: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        document.getElementById('recording-status').innerHTML = `
+            <i class="fas fa-microphone-slash fa-2x mb-2"></i>
+            <p>点击麦克风按钮开始录音</p>
+        `;
+    });
+}
+
+// 上传音频文件
+function uploadAudio() {
+    document.getElementById('audio-file-input').click();
+}
+
+// 处理音频文件上传
+function handleAudioUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('audio', file);
+    
+    document.getElementById('recording-status').innerHTML = `
+        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+        <p>正在处理音频文件...</p>
+    `;
+    
+    fetch('/api/voice/stt', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('stt-result').value = data.text;
+            showToast('音频识别成功', 'success');
+        } else {
+            throw new Error(data.error || '音频识别失败');
+        }
+    })
+    .catch(error => {
+        console.error('音频识别失败:', error);
+        showToast('音频识别失败: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        document.getElementById('recording-status').innerHTML = `
+            <i class="fas fa-microphone-slash fa-2x mb-2"></i>
+            <p>点击麦克风按钮开始录音</p>
+        `;
+    });
+}
+
+// 复制STT结果
+function copySTTResult() {
+    const result = document.getElementById('stt-result').value;
+    if (!result) {
+        showToast('没有识别结果可以复制', 'warning');
+        return;
+    }
+    
+    utils.copyToClipboard(result);
+}
+
+// 发送到聊天
+function sendToChat() {
+    const result = document.getElementById('stt-result').value;
+    if (!result) {
+        showToast('没有识别结果可以发送', 'warning');
+        return;
+    }
+    
+    // 跳转到聊天页面并填入文本
+    const chatUrl = '/chat?message=' + encodeURIComponent(result);
+    window.open(chatUrl, '_blank');
+}
+
+// 处理训练音频上传
+function handleTrainingAudioUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const text = document.getElementById('training-text').value.trim();
+    if (!text) {
+        showToast('请先输入训练文本', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('audio', file);
+    formData.append('text', text);
+    
+    fetch('/api/voice/upload_training_audio', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('训练音频上传成功', 'success');
+        } else {
+            throw new Error(data.error || '上传失败');
+        }
+    })
+    .catch(error => {
+        console.error('训练音频上传失败:', error);
+        showToast('上传失败: ' + error.message, 'danger');
+    });
+}
+
+// 开始语音训练
+function startVoiceTraining() {
+    const voiceName = document.getElementById('voice-name').value.trim();
+    if (!voiceName) {
+        showToast('请输入语音名称', 'warning');
+        return;
+    }
+    
+    api.post('/voice/train_voice', {
+        voice_name: voiceName,
+        epochs: 100,
+        learning_rate: 0.001
+    })
+    .then(data => {
+        if (data.success) {
+            showToast('语音训练已开始', 'success');
+            showTrainingProgress();
+        } else {
+            throw new Error(data.error || '训练启动失败');
+        }
+    })
+    .catch(error => {
+        console.error('语音训练失败:', error);
+        showToast('训练启动失败: ' + error.message, 'danger');
+    });
+}
+
+// 显示训练进度
+function showTrainingProgress() {
+    const progressContainer = document.getElementById('training-progress');
+    progressContainer.classList.remove('d-none');
+    
+    // 模拟进度更新
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 5;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            showToast('语音训练完成', 'success');
+            progressContainer.classList.add('d-none');
+        }
+        
+        const progressBar = progressContainer.querySelector('.progress-bar');
+        progressBar.style.width = progress + '%';
+    }, 2000);
+}
+
+// Base64转Blob
+function base64ToBlob(base64, mimeType) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
+}
+</script>
+{% endblock %}

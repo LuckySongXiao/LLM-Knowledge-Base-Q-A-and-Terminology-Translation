@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+
+{% block title %}松瓷机电AI助手 - 知识库管理{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 知识库列表 -->
+    <div class="col-md-4">
+        <div class="card knowledge-sidebar">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fas fa-book me-2"></i>知识条目
+                    </h6>
+                    <button class="btn btn-primary btn-sm" onclick="showAddModal()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <!-- 搜索框 -->
+                <div class="p-3 border-bottom">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="search-input" placeholder="搜索知识...">
+                        <button class="btn btn-outline-secondary" onclick="searchKnowledge()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 知识条目列表 -->
+                <div id="knowledge-list" style="max-height: 60vh; overflow-y: auto;">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 知识内容 -->
+    <div class="col-md-8">
+        <div class="card knowledge-content">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0" id="content-title">
+                        <i class="fas fa-file-text me-2"></i>选择一个知识条目查看内容
+                    </h6>
+                    <div id="content-actions" class="d-none">
+                        <button class="btn btn-outline-primary btn-sm me-1" onclick="editKnowledge()">
+                            <i class="fas fa-edit me-1"></i>编辑
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteKnowledge()">
+                            <i class="fas fa-trash me-1"></i>删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="knowledge-content">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-book-open fa-3x mb-3"></i>
+                        <p>请从左侧选择一个知识条目查看详细内容</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文档上传区域 -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>文档导入
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="file-upload-area" id="file-upload-area">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                    <p class="mb-2">拖拽文件到此处或点击选择文件</p>
+                    <p class="text-muted small">支持 .txt, .pdf, .doc, .docx, .md 格式</p>
+                    <input type="file" id="file-input" class="d-none" accept=".txt,.pdf,.doc,.docx,.md" multiple>
+                    <button class="btn btn-outline-primary" onclick="document.getElementById('file-input').click()">
+                        <i class="fas fa-folder-open me-1"></i>选择文件
+                    </button>
+                </div>
+
+                <!-- 上传进度 -->
+                <div id="upload-progress" class="mt-3 d-none">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted mt-1 d-block">上传中...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加/编辑知识模态框 -->
+<div class="modal fade" id="knowledgeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title">
+                    <i class="fas fa-plus me-2"></i>添加知识条目
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="knowledge-form">
+                    <div class="mb-3">
+                        <label class="form-label">标题 *</label>
+                        <input type="text" class="form-control" id="knowledge-title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">内容 *</label>
+                        <textarea class="form-control" id="knowledge-content-input" rows="10" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">标签</label>
+                        <input type="text" class="form-control" id="knowledge-tags" placeholder="用逗号分隔多个标签">
+                        <small class="text-muted">例如：技术,编程,AI</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveKnowledge()">
+                    <i class="fas fa-save me-1"></i>保存
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let knowledgeItems = [];
+let currentItem = null;
+let isEditMode = false;
+
+// 页面初始化
+function initializePage() {
+    console.log('初始化知识库页面');
+
+    // 设置搜索框事件
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            searchKnowledge();
+        }
+    });
+
+    // 设置文件上传事件
+    setupFileUpload();
+
+    // 加载知识库条目
+    loadKnowledgeItems();
+}
+
+// 加载知识库条目
+function loadKnowledgeItems() {
+    api.get('/knowledge/items?per_page=100')
+        .then(data => {
+            if (data.success) {
+                knowledgeItems = data.items;
+                displayKnowledgeList(knowledgeItems);
+            } else {
+                throw new Error(data.error || '加载失败');
+            }
+        })
+        .catch(error => {
+            console.error('加载知识库失败:', error);
+            document.getElementById('knowledge-list').innerHTML = `
+                <div class="text-center text-danger py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>加载失败: ${error.message}</p>
+                    <button class="btn btn-outline-primary btn-sm" onclick="loadKnowledgeItems()">
+                        <i class="fas fa-sync-alt me-1"></i>重试
+                    </button>
+                </div>
+            `;
+        });
+}
+
+// 显示知识库列表
+function displayKnowledgeList(items) {
+    const listContainer = document.getElementById('knowledge-list');
+
+    if (items.length === 0) {
+        listContainer.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-book fa-2x mb-2"></i>
+                <p>暂无知识条目</p>
+                <button class="btn btn-outline-primary btn-sm" onclick="showAddModal()">
+                    <i class="fas fa-plus me-1"></i>添加第一个条目
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    items.forEach(item => {
+        html += `
+            <div class="knowledge-item" onclick="selectKnowledgeItem('${item.id}')">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${escapeHtml(item.title)}</h6>
+                        <p class="mb-1 text-muted small">${escapeHtml(item.content)}</p>
+                        ${item.tags && item.tags.length > 0 ?
+                            '<div class="mt-1">' + item.tags.map(tag =>
+                                `<span class="badge bg-secondary me-1">${escapeHtml(tag)}</span>`
+                            ).join('') + '</div>' : ''
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    listContainer.innerHTML = html;
+}
+
+// 选择知识条目
+function selectKnowledgeItem(itemId) {
+    // 移除之前的选中状态
+    document.querySelectorAll('.knowledge-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    // 添加当前选中状态
+    event.currentTarget.classList.add('active');
+
+    // 显示加载状态
+    const contentElement = document.getElementById('knowledge-content');
+    contentElement.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+            <p>加载中...</p>
+        </div>
+    `;
+
+    // 从API获取详细内容
+    api.get(`/knowledge/item/${itemId}`)
+        .then(data => {
+            if (data.success) {
+                currentItem = data.item;
+                displayKnowledgeContent(currentItem);
+            } else {
+                throw new Error(data.error || '获取详情失败');
+            }
+        })
+        .catch(error => {
+            console.error('获取知识条目详情失败:', error);
+            contentElement.innerHTML = `
+                <div class="text-center text-danger py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>加载失败: ${error.message}</p>
+                    <button class="btn btn-outline-primary btn-sm" onclick="selectKnowledgeItem('${itemId}')">
+                        <i class="fas fa-sync-alt me-1"></i>重试
+                    </button>
+                </div>
+            `;
+        });
+}
+
+// 显示知识内容
+function displayKnowledgeContent(item) {
+    const titleElement = document.getElementById('content-title');
+    const contentElement = document.getElementById('knowledge-content');
+    const actionsElement = document.getElementById('content-actions');
+
+    titleElement.innerHTML = `<i class="fas fa-file-text me-2"></i>${escapeHtml(item.title)}`;
+
+    let contentHtml = `
+        <div class="mb-3">
+            <h5>${escapeHtml(item.title)}</h5>
+            ${item.tags && item.tags.length > 0 ?
+                '<div class="mb-2">' + item.tags.map(tag =>
+                    `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`
+                ).join('') + '</div>' : ''
+            }
+            ${item.type ? `<span class="badge bg-secondary">${escapeHtml(item.type)}</span>` : ''}
+        </div>
+    `;
+
+    // 根据不同类型显示内容
+    if (item.type === 'qa_group') {
+        // 问答对类型的特殊显示
+        contentHtml += `
+            <div class="content-body">
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-question-circle me-2"></i>问题</h6>
+                    </div>
+                    <div class="card-body">
+                        ${escapeHtml(item.question || '').replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>答案</h6>
+                    </div>
+                    <div class="card-body">
+                        ${escapeHtml(item.answer || '').replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 显示来源信息
+        if (item.source || item.imported_at) {
+            contentHtml += `
+                <div class="mt-4 pt-3 border-top text-muted small">
+                    ${item.source ? `来源文件: ${escapeHtml(item.source)}<br>` : ''}
+                    ${item.imported_at ? `导入时间: ${item.imported_at}` : ''}
+                </div>
+            `;
+        }
+    } else if (item.type === 'document_chunk') {
+        // 文档片段类型
+        contentHtml += `
+            <div class="content-body">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-file-alt me-2"></i>文档片段 ${item.chunk_index + 1}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        ${escapeHtml(item.content).replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 显示来源信息
+        if (item.source || item.imported_at) {
+            contentHtml += `
+                <div class="mt-4 pt-3 border-top text-muted small">
+                    ${item.source ? `来源文件: ${escapeHtml(item.source)}<br>` : ''}
+                    ${item.imported_at ? `导入时间: ${item.imported_at}` : ''}
+                </div>
+            `;
+        }
+    } else {
+        // 普通文本类型
+        contentHtml += `
+            <div class="content-body">
+                <div class="card">
+                    <div class="card-body">
+                        ${escapeHtml(item.content).replace(/\n/g, '<br>')}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // 显示时间信息
+        if (item.created_at || item.updated_at) {
+            contentHtml += `
+                <div class="mt-4 pt-3 border-top text-muted small">
+                    ${item.created_at ? `创建时间: ${utils.formatDate(item.created_at)}` : ''}
+                    ${item.updated_at ? `<br>更新时间: ${utils.formatDate(item.updated_at)}` : ''}
+                </div>
+            `;
+        }
+    }
+
+    contentElement.innerHTML = contentHtml;
+    actionsElement.classList.remove('d-none');
+}
+
+// 搜索知识
+function searchKnowledge() {
+    const query = document.getElementById('search-input').value.trim();
+
+    if (!query) {
+        displayKnowledgeList(knowledgeItems);
+        return;
+    }
+
+    api.post('/knowledge/search', { query: query })
+        .then(data => {
+            if (data.success) {
+                displayKnowledgeList(data.results);
+            } else {
+                throw new Error(data.error || '搜索失败');
+            }
+        })
+        .catch(error => {
+            console.error('搜索失败:', error);
+            showToast('搜索失败: ' + error.message, 'danger');
+        });
+}
+
+// 显示添加模态框
+function showAddModal() {
+    isEditMode = false;
+    document.getElementById('modal-title').innerHTML = '<i class="fas fa-plus me-2"></i>添加知识条目';
+    document.getElementById('knowledge-title').value = '';
+    document.getElementById('knowledge-content-input').value = '';
+    document.getElementById('knowledge-tags').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('knowledgeModal'));
+    modal.show();
+}
+
+// 编辑知识
+function editKnowledge() {
+    if (!currentItem) {
+        showToast('请先选择一个知识条目', 'warning');
+        return;
+    }
+
+    isEditMode = true;
+    document.getElementById('modal-title').innerHTML = '<i class="fas fa-edit me-2"></i>编辑知识条目';
+    document.getElementById('knowledge-title').value = currentItem.title;
+    document.getElementById('knowledge-content-input').value = currentItem.content;
+    document.getElementById('knowledge-tags').value = currentItem.tags ? currentItem.tags.join(', ') : '';
+
+    const modal = new bootstrap.Modal(document.getElementById('knowledgeModal'));
+    modal.show();
+}
+
+// 保存知识
+function saveKnowledge() {
+    const title = document.getElementById('knowledge-title').value.trim();
+    const content = document.getElementById('knowledge-content-input').value.trim();
+    const tagsStr = document.getElementById('knowledge-tags').value.trim();
+
+    if (!title || !content) {
+        showToast('标题和内容不能为空', 'warning');
+        return;
+    }
+
+    const tags = tagsStr ? tagsStr.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+
+    const data = {
+        title: title,
+        content: content,
+        tags: tags
+    };
+
+    let apiCall;
+    if (isEditMode && currentItem) {
+        apiCall = api.put(`/knowledge/update/${currentItem.id}`, data);
+    } else {
+        apiCall = api.post('/knowledge/add', data);
+    }
+
+    apiCall
+        .then(response => {
+            if (response.success) {
+                showToast(isEditMode ? '知识条目更新成功' : '知识条目添加成功', 'success');
+
+                // 关闭模态框
+                const modal = bootstrap.Modal.getInstance(document.getElementById('knowledgeModal'));
+                modal.hide();
+
+                // 重新加载列表
+                loadKnowledgeItems();
+            } else {
+                throw new Error(response.error || '保存失败');
+            }
+        })
+        .catch(error => {
+            console.error('保存失败:', error);
+            showToast('保存失败: ' + error.message, 'danger');
+        });
+}
+
+// 删除知识
+function deleteKnowledge() {
+    if (!currentItem) {
+        showToast('请先选择一个知识条目', 'warning');
+        return;
+    }
+
+    if (!confirm(`确定要删除知识条目"${currentItem.title}"吗？`)) {
+        return;
+    }
+
+    api.delete(`/knowledge/delete/${currentItem.id}`)
+        .then(data => {
+            if (data.success) {
+                showToast('知识条目删除成功', 'success');
+
+                // 清空内容显示
+                document.getElementById('content-title').innerHTML = '<i class="fas fa-file-text me-2"></i>选择一个知识条目查看内容';
+                document.getElementById('knowledge-content').innerHTML = `
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-book-open fa-3x mb-3"></i>
+                        <p>请从左侧选择一个知识条目查看详细内容</p>
+                    </div>
+                `;
+                document.getElementById('content-actions').classList.add('d-none');
+
+                currentItem = null;
+
+                // 重新加载列表
+                loadKnowledgeItems();
+            } else {
+                throw new Error(data.error || '删除失败');
+            }
+        })
+        .catch(error => {
+            console.error('删除失败:', error);
+            showToast('删除失败: ' + error.message, 'danger');
+        });
+}
+
+// 设置文件上传
+function setupFileUpload() {
+    const fileInput = document.getElementById('file-input');
+    const uploadArea = document.getElementById('file-upload-area');
+
+    // 文件选择事件
+    fileInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+    });
+
+    // 拖拽事件
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+}
+
+// 处理文件上传
+function handleFiles(files) {
+    if (files.length === 0) return;
+
+    const progressContainer = document.getElementById('upload-progress');
+    const progressBar = progressContainer.querySelector('.progress-bar');
+
+    progressContainer.classList.remove('d-none');
+
+    Array.from(files).forEach((file, index) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/knowledge/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`文件 "${file.name}" 上传成功`, 'success');
+                loadKnowledgeItems(); // 重新加载列表
+            } else {
+                throw new Error(data.error || '上传失败');
+            }
+        })
+        .catch(error => {
+            console.error('文件上传失败:', error);
+            showToast(`文件 "${file.name}" 上传失败: ${error.message}`, 'danger');
+        })
+        .finally(() => {
+            if (index === files.length - 1) {
+                progressContainer.classList.add('d-none');
+            }
+        });
+    });
+}
+
+// HTML转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

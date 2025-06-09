@@ -1,0 +1,726 @@
+{% extends "base.html" %}
+
+{% block title %}松瓷机电AI助手 - 系统设置{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- 设置导航 -->
+        <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button">
+                    <i class="fas fa-cog me-1"></i>常规设置
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="model-tab" data-bs-toggle="tab" data-bs-target="#model" type="button">
+                    <i class="fas fa-brain me-1"></i>模型设置
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button">
+                    <i class="fas fa-server me-1"></i>系统信息
+                </button>
+            </li>
+        </ul>
+
+        <!-- 设置内容 -->
+        <div class="tab-content" id="settingsTabContent">
+            <!-- 常规设置 -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel">
+                <div class="settings-section">
+                    <h5>AI模型参数</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">温度 (Temperature)</label>
+                                <input type="range" class="form-range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">0 (保守)</small>
+                                    <span id="temperature-value" class="badge bg-primary">0.7</span>
+                                    <small class="text-muted">2 (创新)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Top-p</label>
+                                <input type="range" class="form-range" id="top-p" min="0" max="1" step="0.05" value="0.9">
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">0</small>
+                                    <span id="top-p-value" class="badge bg-primary">0.9</span>
+                                    <small class="text-muted">1</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Top-k</label>
+                                <input type="number" class="form-control" id="top-k" min="1" max="100" value="15">
+                                <small class="form-text text-muted">限制候选词数量，值越小越保守</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">重复惩罚 (Repetition Penalty)</label>
+                                <input type="range" class="form-range" id="repetition-penalty" min="1.0" max="2.0" step="0.1" value="1.1">
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">1.0 (无惩罚)</small>
+                                    <span id="repetition-penalty-value" class="badge bg-primary">1.1</span>
+                                    <small class="text-muted">2.0 (强惩罚)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">最大生成长度</label>
+                                <input type="number" class="form-control" id="max-tokens" min="1" max="4096" value="512">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">语言</label>
+                                <select class="form-select" id="language">
+                                    <option value="zh">中文</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="do-sample" checked>
+                                    <label class="form-check-label" for="do-sample">
+                                        启用采样 (Do Sample)
+                                    </label>
+                                    <small class="form-text text-muted d-block">关闭时使用贪婪解码，开启时使用随机采样</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h5>知识库问答设置</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">参考文件上下文数量</label>
+                                <input type="number" class="form-control" id="kb-top-k" min="1" max="50" value="15">
+                                <small class="form-text text-muted">知识库问答时参考的文档片段数量</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">搜索相似度阈值</label>
+                                <input type="range" class="form-range" id="kb-threshold" min="0" max="1" step="0.05" value="0.7">
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">0 (宽松)</small>
+                                    <span id="kb-threshold-value" class="badge bg-info">0.7</span>
+                                    <small class="text-muted">1 (严格)</small>
+                                </div>
+                                <small class="form-text text-muted">低于此阈值的搜索结果将被过滤</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">知识库问答温度</label>
+                                <input type="range" class="form-range" id="kb-temperature" min="0" max="1" step="0.1" value="0.6">
+                                <div class="d-flex justify-content-between">
+                                    <small class="text-muted">0 (严谨)</small>
+                                    <span id="kb-temperature-value" class="badge bg-success">0.6</span>
+                                    <small class="text-muted">1 (创新)</small>
+                                </div>
+                                <small class="form-text text-muted">知识库问答专用温度参数，通常比聊天更保守</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="enable-knowledge" checked>
+                                    <label class="form-check-label" for="enable-knowledge">
+                                        启用知识库问答
+                                    </label>
+                                    <small class="form-text text-muted d-block">关闭后将不使用知识库进行问答</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h5>系统提示词</h5>
+                    <div class="mb-3">
+                        <textarea class="form-control" id="system-prompt" rows="4"
+                                  placeholder="输入系统提示词，定义松瓷机电AI助手的行为和角色..."></textarea>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button class="btn btn-secondary me-2" onclick="resetSettings()">
+                        <i class="fas fa-undo me-1"></i>重置
+                    </button>
+                    <button class="btn btn-primary" onclick="saveSettings()">
+                        <i class="fas fa-save me-1"></i>保存设置
+                    </button>
+                </div>
+            </div>
+
+            <!-- 模型设置 -->
+            <div class="tab-pane fade" id="model" role="tabpanel">
+                <div class="settings-section">
+                    <h5>当前模型状态</h5>
+                    <div id="current-models">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在获取模型信息...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h5>可用模型</h5>
+                    <div id="available-models">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在扫描可用模型...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统信息 -->
+            <div class="tab-pane fade" id="system" role="tabpanel">
+                <div class="settings-section">
+                    <h5>系统状态</h5>
+                    <div id="system-status">
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在获取系统信息...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-end">
+                    <button class="btn btn-outline-primary" onclick="refreshSystemInfo()">
+                        <i class="fas fa-sync-alt me-1"></i>刷新信息
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSettings = {};
+
+// 页面初始化
+function initializePage() {
+    console.log('初始化设置页面');
+
+    // 设置滑块事件
+    setupSliders();
+
+    // 加载当前设置
+    loadCurrentSettings();
+
+    // 监听标签页切换
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(e) {
+            const target = e.target.getAttribute('data-bs-target');
+            if (target === '#model') {
+                loadModelInfo();
+            } else if (target === '#system') {
+                loadSystemInfo();
+            }
+        });
+    });
+}
+
+// 设置滑块事件
+function setupSliders() {
+    const temperatureSlider = document.getElementById('temperature');
+    const temperatureValue = document.getElementById('temperature-value');
+
+    temperatureSlider.addEventListener('input', function() {
+        temperatureValue.textContent = this.value;
+    });
+
+    const topPSlider = document.getElementById('top-p');
+    const topPValue = document.getElementById('top-p-value');
+
+    topPSlider.addEventListener('input', function() {
+        topPValue.textContent = this.value;
+    });
+
+    const repetitionPenaltySlider = document.getElementById('repetition-penalty');
+    const repetitionPenaltyValue = document.getElementById('repetition-penalty-value');
+
+    repetitionPenaltySlider.addEventListener('input', function() {
+        repetitionPenaltyValue.textContent = this.value;
+    });
+
+    const kbThresholdSlider = document.getElementById('kb-threshold');
+    const kbThresholdValue = document.getElementById('kb-threshold-value');
+
+    kbThresholdSlider.addEventListener('input', function() {
+        kbThresholdValue.textContent = this.value;
+    });
+
+    const kbTemperatureSlider = document.getElementById('kb-temperature');
+    const kbTemperatureValue = document.getElementById('kb-temperature-value');
+
+    kbTemperatureSlider.addEventListener('input', function() {
+        kbTemperatureValue.textContent = this.value;
+    });
+}
+
+// 加载当前设置
+function loadCurrentSettings() {
+    api.get('/settings/config')
+        .then(data => {
+            if (data.success) {
+                currentSettings = data.config;
+                populateSettings(currentSettings);
+            } else {
+                throw new Error(data.error || '加载设置失败');
+            }
+        })
+        .catch(error => {
+            console.error('加载设置失败:', error);
+            showToast('加载设置失败: ' + error.message, 'danger');
+        });
+}
+
+// 填充设置表单
+function populateSettings(settings) {
+    // AI模型参数
+    if (settings.temperature !== undefined) {
+        document.getElementById('temperature').value = settings.temperature;
+        document.getElementById('temperature-value').textContent = settings.temperature;
+    }
+
+    if (settings.top_p !== undefined) {
+        document.getElementById('top-p').value = settings.top_p;
+        document.getElementById('top-p-value').textContent = settings.top_p;
+    }
+
+    if (settings.top_k !== undefined) {
+        document.getElementById('top-k').value = settings.top_k;
+    }
+
+    if (settings.repetition_penalty !== undefined) {
+        document.getElementById('repetition-penalty').value = settings.repetition_penalty;
+        document.getElementById('repetition-penalty-value').textContent = settings.repetition_penalty;
+    }
+
+    if (settings.max_new_tokens !== undefined) {
+        document.getElementById('max-tokens').value = settings.max_new_tokens;
+    }
+
+    if (settings.do_sample !== undefined) {
+        document.getElementById('do-sample').checked = settings.do_sample;
+    }
+
+    if (settings.language !== undefined) {
+        document.getElementById('language').value = settings.language;
+    }
+
+    if (settings.system_prompt !== undefined) {
+        document.getElementById('system-prompt').value = settings.system_prompt;
+    }
+
+    // 知识库问答设置
+    if (settings.kb_top_k !== undefined) {
+        document.getElementById('kb-top-k').value = settings.kb_top_k;
+    }
+
+    if (settings.kb_threshold !== undefined) {
+        document.getElementById('kb-threshold').value = settings.kb_threshold;
+        document.getElementById('kb-threshold-value').textContent = settings.kb_threshold;
+    }
+
+    if (settings.kb_temperature !== undefined) {
+        document.getElementById('kb-temperature').value = settings.kb_temperature;
+        document.getElementById('kb-temperature-value').textContent = settings.kb_temperature;
+    }
+
+    if (settings.enable_knowledge !== undefined) {
+        document.getElementById('enable-knowledge').checked = settings.enable_knowledge;
+    }
+}
+
+// 保存设置
+function saveSettings() {
+    const newSettings = {
+        // AI模型参数
+        temperature: parseFloat(document.getElementById('temperature').value),
+        top_p: parseFloat(document.getElementById('top-p').value),
+        top_k: parseInt(document.getElementById('top-k').value),
+        repetition_penalty: parseFloat(document.getElementById('repetition-penalty').value),
+        max_new_tokens: parseInt(document.getElementById('max-tokens').value),
+        do_sample: document.getElementById('do-sample').checked,
+        language: document.getElementById('language').value,
+        system_prompt: document.getElementById('system-prompt').value,
+
+        // 知识库问答设置
+        kb_top_k: parseInt(document.getElementById('kb-top-k').value),
+        kb_threshold: parseFloat(document.getElementById('kb-threshold').value),
+        kb_temperature: parseFloat(document.getElementById('kb-temperature').value),
+        enable_knowledge: document.getElementById('enable-knowledge').checked
+    };
+
+    api.post('/settings/update', newSettings)
+        .then(data => {
+            if (data.success) {
+                showToast('设置保存成功', 'success');
+                currentSettings = { ...currentSettings, ...newSettings };
+            } else {
+                throw new Error(data.error || '保存设置失败');
+            }
+        })
+        .catch(error => {
+            console.error('保存设置失败:', error);
+            showToast('保存设置失败: ' + error.message, 'danger');
+        });
+}
+
+// 重置设置
+function resetSettings() {
+    if (!confirm('确定要重置所有设置到默认值吗？')) {
+        return;
+    }
+
+    // 重置AI模型参数到默认值
+    document.getElementById('temperature').value = 0.7;
+    document.getElementById('temperature-value').textContent = '0.7';
+    document.getElementById('top-p').value = 0.9;
+    document.getElementById('top-p-value').textContent = '0.9';
+    document.getElementById('top-k').value = 15;
+    document.getElementById('repetition-penalty').value = 1.1;
+    document.getElementById('repetition-penalty-value').textContent = '1.1';
+    document.getElementById('max-tokens').value = 512;
+    document.getElementById('do-sample').checked = true;
+    document.getElementById('language').value = 'zh';
+    document.getElementById('system-prompt').value = '';
+
+    // 重置知识库问答设置到默认值
+    document.getElementById('kb-top-k').value = 15;
+    document.getElementById('kb-threshold').value = 0.7;
+    document.getElementById('kb-threshold-value').textContent = '0.7';
+    document.getElementById('kb-temperature').value = 0.6;
+    document.getElementById('kb-temperature-value').textContent = '0.6';
+    document.getElementById('enable-knowledge').checked = true;
+
+    showToast('设置已重置，请点击保存按钮应用更改', 'info');
+}
+
+// 加载模型信息
+function loadModelInfo() {
+    api.get('/settings/models')
+        .then(data => {
+            if (data.success) {
+                displayModelInfo(data.models);
+            } else {
+                throw new Error(data.error || '获取模型信息失败');
+            }
+        })
+        .catch(error => {
+            console.error('获取模型信息失败:', error);
+            document.getElementById('current-models').innerHTML = `
+                <div class="alert alert-danger">
+                    获取模型信息失败: ${error.message}
+                </div>
+            `;
+            document.getElementById('available-models').innerHTML = `
+                <div class="alert alert-danger">
+                    获取可用模型失败: ${error.message}
+                </div>
+            `;
+        });
+}
+
+// 显示模型信息
+function displayModelInfo(models) {
+    // 当前模型
+    let currentHtml = '<div class="row">';
+
+    if (models.current_llm) {
+        currentHtml += `
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-brain me-2 text-primary"></i>当前LLM模型
+                        </h6>
+                        <p class="card-text">
+                            <strong>名称:</strong> ${models.current_llm.name}<br>
+                            <strong>设备:</strong> ${models.current_llm.device}<br>
+                            <strong>路径:</strong> <small>${models.current_llm.path}</small>
+                        </p>
+                        <span class="badge bg-success">运行中</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        currentHtml += `
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-brain me-2 text-secondary"></i>LLM模型
+                        </h6>
+                        <p class="card-text text-muted">未加载</p>
+                        <span class="badge bg-secondary">未运行</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    if (models.current_embedding) {
+        currentHtml += `
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-vector-square me-2 text-info"></i>当前向量模型
+                        </h6>
+                        <p class="card-text">
+                            <strong>名称:</strong> ${models.current_embedding.name}<br>
+                            <strong>设备:</strong> ${models.current_embedding.device}<br>
+                            <strong>路径:</strong> <small>${models.current_embedding.path}</small>
+                        </p>
+                        <span class="badge bg-success">运行中</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        currentHtml += `
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-vector-square me-2 text-secondary"></i>向量模型
+                        </h6>
+                        <p class="card-text text-muted">未加载</p>
+                        <span class="badge bg-secondary">未运行</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    currentHtml += '</div>';
+    document.getElementById('current-models').innerHTML = currentHtml;
+
+    // 可用模型
+    let availableHtml = '';
+
+    if (models.llm_models.length > 0) {
+        availableHtml += '<h6>可用LLM模型</h6><div class="row mb-3">';
+        models.llm_models.forEach(model => {
+            availableHtml += `
+                <div class="col-md-6 mb-2">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${model.name}</h6>
+                            <p class="card-text">
+                                <small class="text-muted">${model.path}</small><br>
+                                <small>大小: ${model.size}</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        availableHtml += '</div>';
+    }
+
+    if (models.embedding_models.length > 0) {
+        availableHtml += '<h6>可用向量模型</h6><div class="row">';
+        models.embedding_models.forEach(model => {
+            availableHtml += `
+                <div class="col-md-6 mb-2">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${model.name}</h6>
+                            <p class="card-text">
+                                <small class="text-muted">${model.path}</small><br>
+                                <small>大小: ${model.size}</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        availableHtml += '</div>';
+    }
+
+    if (!availableHtml) {
+        availableHtml = '<div class="alert alert-info">未检测到可用模型</div>';
+    }
+
+    document.getElementById('available-models').innerHTML = availableHtml;
+}
+
+// 加载系统信息
+function loadSystemInfo() {
+    api.get('/settings/system_info')
+        .then(data => {
+            if (data.success) {
+                displaySystemInfo(data.system_info);
+            } else {
+                throw new Error(data.error || '获取系统信息失败');
+            }
+        })
+        .catch(error => {
+            console.error('获取系统信息失败:', error);
+            document.getElementById('system-status').innerHTML = `
+                <div class="alert alert-danger">
+                    获取系统信息失败: ${error.message}
+                </div>
+            `;
+        });
+}
+
+// 显示系统信息
+function displaySystemInfo(info) {
+    let html = '<div class="row">';
+
+    // 系统信息
+    html += `
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-desktop me-2"></i>系统信息
+                    </h6>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>操作系统:</strong> ${info.platform.system} ${info.platform.release}</li>
+                        <li><strong>架构:</strong> ${info.platform.machine}</li>
+                        <li><strong>处理器:</strong> ${info.platform.processor || 'Unknown'}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 资源使用
+    html += `
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-chart-bar me-2"></i>资源使用
+                    </h6>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>CPU使用率:</strong> ${info.cpu.percent.toFixed(1)}%</li>
+                        <li><strong>内存使用率:</strong> ${info.memory.percent.toFixed(1)}%</li>
+                        <li><strong>可用内存:</strong> ${(info.memory.available / 1024 / 1024 / 1024).toFixed(1)} GB</li>
+                        <li><strong>总内存:</strong> ${(info.memory.total / 1024 / 1024 / 1024).toFixed(1)} GB</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // GPU信息
+    if (info.gpu.available) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-microchip me-2"></i>GPU信息
+                        </h6>
+                        <ul class="list-unstyled mb-0">
+                            <li><strong>GPU数量:</strong> ${info.gpu.count}</li>
+        `;
+
+        info.gpu.devices.forEach((gpu, index) => {
+            const memoryUsed = (gpu.memory_allocated / 1024 / 1024 / 1024).toFixed(1);
+            const memoryTotal = (gpu.memory_total / 1024 / 1024 / 1024).toFixed(1);
+            html += `
+                <li><strong>GPU ${index}:</strong> ${gpu.name}</li>
+                <li><strong>显存:</strong> ${memoryUsed}/${memoryTotal} GB</li>
+            `;
+        });
+
+        html += `
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 松瓷机电AI助手状态
+    html += `
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-robot me-2"></i>松瓷机电AI助手状态
+                    </h6>
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>状态:</strong> ${info.ai_assistant.initialized ?
+                            '<span class="text-success">已初始化</span>' :
+                            '<span class="text-danger">未初始化</span>'}</li>
+    `;
+
+    if (info.ai_assistant.components) {
+        Object.keys(info.ai_assistant.components).forEach(component => {
+            const available = info.ai_assistant.components[component];
+            html += `
+                <li><strong>${component}:</strong> ${available ?
+                    '<span class="text-success">可用</span>' :
+                    '<span class="text-warning">不可用</span>'}</li>
+            `;
+        });
+    }
+
+    html += `
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+
+    html += '</div>';
+
+    document.getElementById('system-status').innerHTML = html;
+}
+
+// 刷新系统信息
+function refreshSystemInfo() {
+    document.getElementById('system-status').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">刷新中...</span>
+            </div>
+            <p class="mt-2">正在刷新系统信息...</p>
+        </div>
+    `;
+    loadSystemInfo();
+}
+</script>
+{% endblock %}

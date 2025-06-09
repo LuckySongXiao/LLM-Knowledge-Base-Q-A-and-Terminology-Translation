@@ -1,0 +1,145 @@
+{
+  "等径": {
+    "source_term": "等径",
+    "target_term": "Body",
+    "definition": "Body",
+    "vector_id": "4f66bd67-105b-4fff-bf7c-2ea52e32489d",
+    "metadata": {
+      "id": "4fe61f86-e468-4fc9-9f23-f8ac7b74345b",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T15:51:17.610542"
+    }
+  },
+  "引晶": {
+    "source_term": "引晶",
+    "target_term": "Neck",
+    "definition": "Neck",
+    "vector_id": "446c5fbd-6479-4d12-984c-18624e5cf9ec",
+    "metadata": {
+      "id": "6c6936b1-4c05-4bc5-bb8c-a0e963a510a0",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T15:52:17.652590"
+    }
+  },
+  "放肩": {
+    "source_term": "放肩",
+    "target_term": "Crown",
+    "definition": "Crown",
+    "vector_id": "072f591a-0411-4d88-924d-bfb6d7b8d6f1",
+    "metadata": {
+      "id": "12b3f1b5-7ac0-45cc-b5fd-55b532c22fac",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T15:52:27.928792"
+    }
+  },
+  "转肩": {
+    "source_term": "转肩",
+    "target_term": "Shoulder",
+    "definition": "Shoulder",
+    "vector_id": "014e0a3d-7439-438a-babc-95dd0cb643a0",
+    "metadata": {
+      "id": "0b42aadf-b54e-49bd-b66d-12b45d85052c",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T15:52:43.560893"
+    }
+  },
+  "回熔": {
+    "source_term": "回熔",
+    "target_term": "Melted back",
+    "definition": "Melted back",
+    "vector_id": "7ba8e1f6-6342-4f27-aad1-8fe20dff0b65",
+    "metadata": {
+      "id": "b27a0560-852b-4635-8785-333591f29a6d",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T15:52:59.271044"
+    }
+  },
+  "直径": {
+    "source_term": "直径",
+    "target_term": "Diameter",
+    "definition": "Diameter",
+    "vector_id": "42e52d8c-bdd3-49f1-ae36-b10fb2fff62f",
+    "metadata": {
+      "id": "fb0accec-aea3-4219-9228-3569cc6f0b91",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T15:54:00.335958"
+    }
+  },
+  "断线": {
+    "source_term": "断线",
+    "target_term": "Structural loss",
+    "definition": "Structural loss",
+    "vector_id": "a80e9885-9f50-4313-9124-aec3ca7ccb0a",
+    "metadata": {
+      "id": "17bbe4f5-d79c-43cc-8fd6-e525bb7ef90c",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-16T16:47:07.118703"
+    }
+  },
+  "取段": {
+    "source_term": "取段",
+    "target_term": "Pop-out",
+    "definition": "Pop-out",
+    "vector_id": "f624ee06-5f4f-4d8a-8a01-180e86411dae",
+    "metadata": {
+      "id": "2fe9c8ef-4879-44ef-b6b9-4aa530dd015c",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-17T16:59:24.013349"
+    }
+  },
+  "收尾": {
+    "source_term": "收尾",
+    "target_term": "Tail",
+    "definition": "Tail",
+    "vector_id": "bd7a730a-f70b-4773-b7cf-5746ea7ea679",
+    "metadata": {
+      "id": "b7a38c6f-97fe-4a7a-81b3-c5212bafd791",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-17T16:59:48.933557"
+    }
+  },
+  "多晶": {
+    "source_term": "多晶",
+    "target_term": "polycrystal",
+    "definition": "polycrystal",
+    "vector_id": "0e74958d-cedb-4568-81a2-d1ea41b7dfa0",
+    "metadata": {
+      "id": "08ea38f4-736a-4b2c-838d-613be76afca5",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-17T17:03:36.363933"
+    }
+  },
+  "单晶": {
+    "source_term": "单晶",
+    "target_term": "monocrystal",
+    "definition": "monocrystal",
+    "vector_id": "fa45a108-69d1-413a-9877-60581ba35424",
+    "metadata": {
+      "id": "9fe1b9d1-69a3-4cce-880f-2d4faac04e4b",
+      "source_lang": "zh",
+      "target_lang": "en",
+      "type": "term",
+      "added_time": "2025-04-17T17:04:09.868893"
+    }
+  }
+}

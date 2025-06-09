@@ -1,0 +1,864 @@
+{% extends "base.html" %}
+
+{% block title %}术语库管理 - 松瓷机电AI助手{% endblock %}
+
+{% block extra_css %}
+<style>
+.term-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #fff;
+    transition: box-shadow 0.2s;
+}
+
+.term-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.term-source {
+    font-weight: bold;
+    color: #495057;
+    font-size: 1.1em;
+}
+
+.term-target {
+    color: #007bff;
+    font-size: 1.1em;
+    margin-top: 5px;
+}
+
+.term-meta {
+    font-size: 0.9em;
+    color: #6c757d;
+    margin-top: 10px;
+}
+
+.language-badge {
+    font-size: 0.8em;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.category-badge {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.import-export-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.search-section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-spinner {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-book"></i> 术语库管理</h2>
+            <p class="text-muted">管理专业术语，提升翻译质量</p>
+        </div>
+    </div>
+
+    <!-- 统计信息卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h4 id="total-terms">0</h4>
+                <p class="mb-0">总术语数</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h4 id="language-pairs">0</h4>
+                <p class="mb-0">语言对</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h4 id="categories-count">0</h4>
+                <p class="mb-0">分类数</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <h4 id="recent-additions">0</h4>
+                <p class="mb-0">近期新增</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 操作区域 -->
+    <div class="row mb-4">
+        <!-- 搜索区域 -->
+        <div class="col-md-8">
+            <div class="search-section">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="search-input" placeholder="搜索术语...">
+                            <button class="btn btn-outline-secondary" type="button" id="search-btn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="source-lang-filter">
+                            <option value="">所有源语言</option>
+                            <option value="zh">中文</option>
+                            <option value="en">英语</option>
+                            <option value="ja">日语</option>
+                            <option value="ko">韩语</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="target-lang-filter">
+                            <option value="">所有目标语言</option>
+                            <option value="zh">中文</option>
+                            <option value="en">英语</option>
+                            <option value="ja">日语</option>
+                            <option value="ko">韩语</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="col-md-4">
+            <div class="d-grid gap-2">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTermModal">
+                    <i class="fas fa-plus"></i> 添加术语
+                </button>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="fas fa-upload"></i> 导入
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportTerms()">
+                        <i class="fas fa-download"></i> 导出
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 术语列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div id="terms-container">
+                <!-- 术语卡片将在这里动态加载 -->
+            </div>
+
+            <!-- 分页控件 -->
+            <nav aria-label="术语分页" id="pagination-container" style="display: none;">
+                <ul class="pagination justify-content-center" id="pagination">
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 添加术语模态框 -->
+<div class="modal fade" id="addTermModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加术语</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addTermForm">
+                    <div class="mb-3">
+                        <label for="source-term" class="form-label">源术语 *</label>
+                        <input type="text" class="form-control" id="source-term" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="target-term" class="form-label">目标术语 *</label>
+                        <input type="text" class="form-control" id="target-term" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="source-lang" class="form-label">源语言</label>
+                                <select class="form-select" id="source-lang">
+                                    <option value="zh">中文</option>
+                                    <option value="en">英语</option>
+                                    <option value="ja">日语</option>
+                                    <option value="ko">韩语</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="target-lang" class="form-label">目标语言</label>
+                                <select class="form-select" id="target-lang">
+                                    <option value="en">英语</option>
+                                    <option value="zh">中文</option>
+                                    <option value="ja">日语</option>
+                                    <option value="ko">韩语</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">分类</label>
+                        <input type="text" class="form-control" id="category" placeholder="如：技术、医学、法律等">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" rows="3" placeholder="术语的详细说明或使用场景"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addTerm()">添加术语</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导入术语模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导入术语库</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="import-file" class="form-label">选择文件</label>
+                    <input type="file" class="form-control" id="import-file" accept=".csv,.json,.txt">
+                    <div class="form-text">
+                        支持格式：CSV、JSON、TXT<br>
+                        CSV格式：source_term,target_term,source_lang,target_lang<br>
+                        TXT格式：每行一个术语对，用制表符或逗号分隔
+                    </div>
+                </div>
+                <div id="import-preview" style="display: none;">
+                    <h6>预览前5行：</h6>
+                    <div class="border p-2 bg-light" style="max-height: 200px; overflow-y: auto;">
+                        <pre id="preview-content"></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="importTerms()" id="import-btn" disabled>导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑术语模态框 -->
+<div class="modal fade" id="editTermModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑术语</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTermForm">
+                    <input type="hidden" id="edit-term-id">
+                    <div class="mb-3">
+                        <label for="edit-source-term" class="form-label">源术语 *</label>
+                        <input type="text" class="form-control" id="edit-source-term" required readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-target-term" class="form-label">目标术语 *</label>
+                        <input type="text" class="form-control" id="edit-target-term" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-source-lang" class="form-label">源语言</label>
+                                <select class="form-select" id="edit-source-lang">
+                                    <option value="zh">中文</option>
+                                    <option value="en">英语</option>
+                                    <option value="ja">日语</option>
+                                    <option value="ko">韩语</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit-target-lang" class="form-label">目标语言</label>
+                                <select class="form-select" id="edit-target-lang">
+                                    <option value="en">英语</option>
+                                    <option value="zh">中文</option>
+                                    <option value="ja">日语</option>
+                                    <option value="ko">韩语</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-category" class="form-label">分类</label>
+                        <input type="text" class="form-control" id="edit-category">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-description" class="form-label">描述</label>
+                        <textarea class="form-control" id="edit-description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="updateTerm()">保存更改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 加载遮罩 -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+        <p class="mt-2">处理中，请稍候...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let currentPage = 1;
+let totalPages = 1;
+let currentSearchQuery = '';
+let currentSourceLang = '';
+let currentTargetLang = '';
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadStatistics();
+    loadTerms();
+    setupEventListeners();
+});
+
+// 设置事件监听器
+function setupEventListeners() {
+    // 搜索功能
+    document.getElementById('search-btn').addEventListener('click', searchTerms);
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchTerms();
+        }
+    });
+
+    // 语言过滤器
+    document.getElementById('source-lang-filter').addEventListener('change', searchTerms);
+    document.getElementById('target-lang-filter').addEventListener('change', searchTerms);
+
+    // 文件导入预览
+    document.getElementById('import-file').addEventListener('change', previewImportFile);
+}
+
+// 加载统计信息
+function loadStatistics() {
+    api.get('/terminology/statistics')
+        .then(data => {
+            if (data.success) {
+                const stats = data.statistics;
+                document.getElementById('total-terms').textContent = stats.total_terms;
+                document.getElementById('language-pairs').textContent = Object.keys(stats.language_pairs).length;
+                document.getElementById('categories-count').textContent = Object.keys(stats.categories).length;
+                document.getElementById('recent-additions').textContent = stats.recent_additions;
+            }
+        })
+        .catch(error => {
+            console.error('加载统计信息失败:', error);
+        });
+}
+
+// 加载术语列表
+function loadTerms(page = 1) {
+    showLoading();
+
+    const params = new URLSearchParams({
+        page: page,
+        per_page: 20
+    });
+
+    if (currentSearchQuery) params.append('q', currentSearchQuery);
+    if (currentSourceLang) params.append('source_lang', currentSourceLang);
+    if (currentTargetLang) params.append('target_lang', currentTargetLang);
+
+    api.get(`/terminology/terms?${params}`)
+        .then(data => {
+            if (data.success) {
+                displayTerms(data.terms);
+                updatePagination(data.page, data.total, data.per_page, data.has_prev, data.has_next);
+                currentPage = data.page;
+            } else {
+                showToast('加载术语失败: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('加载术语失败:', error);
+            showToast('加载术语失败: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+// 显示术语列表
+function displayTerms(terms) {
+    const container = document.getElementById('terms-container');
+
+    if (terms.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">暂无术语</h5>
+                <p class="text-muted">点击"添加术语"开始建立您的术语库</p>
+            </div>
+        `;
+        return;
+    }
+
+    const termsHtml = terms.map(term => `
+        <div class="term-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <div class="term-source">${escapeHtml(term.source_term)}</div>
+                    <div class="term-target">${escapeHtml(term.target_term)}</div>
+                    <div class="term-meta">
+                        <span class="language-badge bg-primary text-white">${term.source_lang}</span>
+                        <i class="fas fa-arrow-right mx-2"></i>
+                        <span class="language-badge bg-success text-white">${term.target_lang}</span>
+                        ${term.category ? `<span class="category-badge ms-2">${escapeHtml(term.category)}</span>` : ''}
+                        ${term.description ? `<div class="mt-2 text-muted small">${escapeHtml(term.description)}</div>` : ''}
+                    </div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editTerm('${term.id}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTerm('${term.id}', '${escapeHtml(term.source_term)}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = termsHtml;
+}
+
+// 更新分页控件
+function updatePagination(page, total, perPage, hasPrev, hasNext) {
+    totalPages = Math.ceil(total / perPage);
+    const paginationContainer = document.getElementById('pagination-container');
+    const pagination = document.getElementById('pagination');
+
+    if (totalPages <= 1) {
+        paginationContainer.style.display = 'none';
+        return;
+    }
+
+    paginationContainer.style.display = 'block';
+
+    let paginationHtml = '';
+
+    // 上一页
+    paginationHtml += `
+        <li class="page-item ${!hasPrev ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadTerms(${page - 1}); return false;">上一页</a>
+        </li>
+    `;
+
+    // 页码
+    const startPage = Math.max(1, page - 2);
+    const endPage = Math.min(totalPages, page + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHtml += `
+            <li class="page-item ${i === page ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadTerms(${i}); return false;">${i}</a>
+            </li>
+        `;
+    }
+
+    // 下一页
+    paginationHtml += `
+        <li class="page-item ${!hasNext ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="loadTerms(${page + 1}); return false;">下一页</a>
+        </li>
+    `;
+
+    pagination.innerHTML = paginationHtml;
+}
+
+// 搜索术语
+function searchTerms() {
+    currentSearchQuery = document.getElementById('search-input').value.trim();
+    currentSourceLang = document.getElementById('source-lang-filter').value;
+    currentTargetLang = document.getElementById('target-lang-filter').value;
+    currentPage = 1;
+    loadTerms(1);
+}
+
+// 添加术语
+function addTerm() {
+    const formData = {
+        source_term: document.getElementById('source-term').value.trim(),
+        target_term: document.getElementById('target-term').value.trim(),
+        source_lang: document.getElementById('source-lang').value,
+        target_lang: document.getElementById('target-lang').value,
+        category: document.getElementById('category').value.trim(),
+        description: document.getElementById('description').value.trim()
+    };
+
+    if (!formData.source_term || !formData.target_term) {
+        showToast('源术语和目标术语不能为空', 'warning');
+        return;
+    }
+
+    showLoading();
+
+    api.post('/terminology/add', formData)
+        .then(data => {
+            if (data.success) {
+                showToast('术语添加成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('addTermModal')).hide();
+                document.getElementById('addTermForm').reset();
+                loadTerms(currentPage);
+                loadStatistics();
+            } else {
+                showToast('添加术语失败: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('添加术语失败:', error);
+            showToast('添加术语失败: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+// 编辑术语
+function editTerm(termId) {
+    // 从当前显示的术语中找到要编辑的术语
+    const termCards = document.querySelectorAll('.term-card');
+    let termData = null;
+
+    // 这里需要重新获取术语详情，因为卡片中可能没有完整信息
+    api.get(`/terminology/terms?per_page=1000`) // 临时方案，实际应该有单独的获取术语详情API
+        .then(data => {
+            if (data.success) {
+                termData = data.terms.find(term => term.id === termId);
+                if (termData) {
+                    // 填充编辑表单
+                    document.getElementById('edit-term-id').value = termData.id;
+                    document.getElementById('edit-source-term').value = termData.source_term;
+                    document.getElementById('edit-target-term').value = termData.target_term;
+                    document.getElementById('edit-source-lang').value = termData.source_lang;
+                    document.getElementById('edit-target-lang').value = termData.target_lang;
+                    document.getElementById('edit-category').value = termData.category || '';
+                    document.getElementById('edit-description').value = termData.description || '';
+
+                    // 显示编辑模态框
+                    new bootstrap.Modal(document.getElementById('editTermModal')).show();
+                } else {
+                    showToast('找不到要编辑的术语', 'danger');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('获取术语详情失败:', error);
+            showToast('获取术语详情失败: ' + error.message, 'danger');
+        });
+}
+
+// 更新术语
+function updateTerm() {
+    const termId = document.getElementById('edit-term-id').value;
+    const formData = {
+        target_term: document.getElementById('edit-target-term').value.trim(),
+        source_lang: document.getElementById('edit-source-lang').value,
+        target_lang: document.getElementById('edit-target-lang').value,
+        category: document.getElementById('edit-category').value.trim(),
+        description: document.getElementById('edit-description').value.trim()
+    };
+
+    if (!formData.target_term) {
+        showToast('目标术语不能为空', 'warning');
+        return;
+    }
+
+    showLoading();
+
+    api.put(`/terminology/update/${termId}`, formData)
+        .then(data => {
+            if (data.success) {
+                showToast('术语更新成功', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('editTermModal')).hide();
+                loadTerms(currentPage);
+                loadStatistics();
+            } else {
+                showToast('更新术语失败: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('更新术语失败:', error);
+            showToast('更新术语失败: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+// 删除术语
+function deleteTerm(termId, sourceTerm) {
+    if (!confirm(`确定要删除术语"${sourceTerm}"吗？此操作不可撤销。`)) {
+        return;
+    }
+
+    showLoading();
+
+    api.delete(`/terminology/delete/${termId}`)
+        .then(data => {
+            if (data.success) {
+                showToast('术语删除成功', 'success');
+                loadTerms(currentPage);
+                loadStatistics();
+            } else {
+                showToast('删除术语失败: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('删除术语失败:', error);
+            showToast('删除术语失败: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+// 预览导入文件
+function previewImportFile() {
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput.files[0];
+    const importBtn = document.getElementById('import-btn');
+    const previewDiv = document.getElementById('import-preview');
+    const previewContent = document.getElementById('preview-content');
+
+    if (!file) {
+        importBtn.disabled = true;
+        previewDiv.style.display = 'none';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        const lines = content.split('\n').slice(0, 5); // 只显示前5行
+        previewContent.textContent = lines.join('\n');
+        previewDiv.style.display = 'block';
+        importBtn.disabled = false;
+    };
+    reader.readAsText(file);
+}
+
+// 导入术语
+function importTerms() {
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showToast('请选择要导入的文件', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    showLoading();
+
+    fetch('/api/terminology/import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`导入完成！成功导入 ${data.imported_count} 个术语，失败 ${data.failed_count} 个`, 'success');
+            if (data.errors && data.errors.length > 0) {
+                console.warn('导入错误:', data.errors);
+            }
+            bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+            loadTerms(currentPage);
+            loadStatistics();
+        } else {
+            showToast('导入失败: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('导入术语失败:', error);
+        showToast('导入术语失败: ' + error.message, 'danger');
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+// 导出术语
+function exportTerms() {
+    const format = prompt('请选择导出格式 (csv/json/txt):', 'csv');
+    if (!format || !['csv', 'json', 'txt'].includes(format.toLowerCase())) {
+        return;
+    }
+
+    showLoading();
+
+    const params = new URLSearchParams({
+        format: format.toLowerCase()
+    });
+
+    // 添加当前的过滤条件
+    if (currentSourceLang) params.append('source_lang', currentSourceLang);
+    if (currentTargetLang) params.append('target_lang', currentTargetLang);
+
+    api.get(`/terminology/export?${params}`)
+        .then(data => {
+            if (data.success) {
+                // 创建下载链接
+                const blob = new Blob([data.content], { type: data.content_type });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = data.filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showToast(`成功导出 ${data.total_terms} 个术语`, 'success');
+            } else {
+                showToast('导出失败: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('导出术语失败:', error);
+            showToast('导出术语失败: ' + error.message, 'danger');
+        })
+        .finally(() => {
+            hideLoading();
+        });
+}
+
+// 显示加载遮罩
+function showLoading() {
+    document.getElementById('loading-overlay').style.display = 'flex';
+}
+
+// 隐藏加载遮罩
+function hideLoading() {
+    document.getElementById('loading-overlay').style.display = 'none';
+}
+
+// HTML转义函数
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Toast通知函数
+function showToast(message, type = 'info') {
+    // 创建toast元素
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${type === 'danger' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'primary'} border-0"
+             role="alert" aria-live="assertive" aria-atomic="true" id="${toastId}">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${escapeHtml(message)}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    // 添加到页面
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+    // 显示toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+        autohide: true,
+        delay: type === 'danger' ? 5000 : 3000
+    });
+    toast.show();
+
+    // 自动清理
+    toastElement.addEventListener('hidden.bs.toast', function() {
+        toastElement.remove();
+    });
+}
+</script>
+{% endblock %}
